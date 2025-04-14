@@ -1,7 +1,18 @@
-from django.core.paginator import Paginator
+from django.core.paginator import EmptyPage, Paginator, PageNotAnInteger
 from django.shortcuts import get_object_or_404, render
 from .models import Post
 from django.http import Http404
+from django.views.generic import ListView
+
+
+class PostListView(ListView):
+    """
+    Alternative post list view
+    """
+    queryset = Post.published.all()
+    context_object_name = 'posts'
+    paginate_by = 3
+    template_name = 'blog/post/list.html'
 
 
 def post_list(request):
@@ -11,8 +22,14 @@ def post_list(request):
     # Retrieve the current page number
     page_number = request.GET.get('page', 1)
     # Get the current page posts
-    posts = paginator.page(page_number)
-
+    try:
+        posts = paginator.page(page_number)
+    except PageNotAnInteger:
+        # If page number is not an integer get the first page
+        posts = paginator.page(1)
+    except EmptyPage:
+        # If page number is out of range get last page of results
+        posts = paginator.page(paginator.num_pages)
     return render(
         request,
         'blog/post/list.html',
