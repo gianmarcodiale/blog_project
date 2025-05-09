@@ -7,6 +7,7 @@ from django.views.decorators.http import require_POST
 from .forms import EmailPostForm, CommentForm
 from django.core.mail import send_mail
 from taggit.models import Tag
+from django.db.models import Count
 
 
 class PostListView(ListView):
@@ -67,13 +68,27 @@ def post_detail(request, year, month, day, post):
     # From for users to comment
     form = CommentForm()
 
+    # List of similar posts
+    # Retrieve list of IDs for the tags in the current post
+    # The value_list() method returns tuples, so we pass flat=True to get it
+    # as single values such as [1, 2, 3, ...] instead of [(1,), (2,), (3,), ...]
+    post_tags_ids = post.tags.values_list('id', flat=True)
+    # Get all posts that contain any of these tags excluding the current post itself
+    similar_posts = Post.published.filter(
+        tags__in=post_tags_ids).exclude(id=post.id)
+    # Using the Count aggregation to generate the calculated field 'same_tags'
+    # that contains the number of tags shared with all the tags queried
+    similar_posts = similar_posts.annotate(same_tags=Count(
+        'tags')).order_by('-same_tags', '-publish')[:4]
+
     return render(
         request,
         'blog/post/detail.html',
         {
             'post': post,
             'form': form,
-            'comments': comments
+            'comments': comments,
+            'similar_posts': similar_posts
         }
     )
 
