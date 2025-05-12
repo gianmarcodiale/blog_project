@@ -1,6 +1,8 @@
 from django import template
 from ..models import Post
 from django.db.models import Count
+import markdown
+from django.utils.safestring import mark_safe
 
 # Each module that contains template tags need to define a variable called register
 # this variable is an instance of the Library class used to register template tags
@@ -29,3 +31,10 @@ def get_most_commented_posts(count=5):
     return Post.published.annotate(
         total_comments=Count('comments')
     ).order_by('-total_comments')[:count]
+
+
+@register.filter(name='markdown')
+# This template filter converts markdown to html
+# Used the mark_safe function to tell Django that this is safe HTML to convert
+def markdown_format(text):
+    return mark_safe(markdown.markdown(text))
